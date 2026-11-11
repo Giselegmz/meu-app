@@ -29,8 +29,8 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Compilar Ionic
-        run: npx ionic build
+        - name:Compilar Ionic
+        run: npm run build
 
       - name: Sincronizar Android
         run: npx cap sync android
