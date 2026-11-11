@@ -21,7 +21,7 @@ jobs:
           node-version: 22
 
       - name: Configurar Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
@@ -29,7 +29,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-        - name:Compilar Ionic
+      - name: Compilar projeto
         run: npm run build
 
       - name: Sincronizar Android
