@@ -1,36 +1,31 @@
+
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+
 import {
   IonApp,
   IonSplitPane,
   IonMenu,
   IonContent,
   IonList,
+   IonNote,
   IonListHeader,
-  IonNote,
   IonMenuToggle,
   IonItem,
   IonIcon,
   IonLabel,
-  IonRouterOutlet,
-  IonRouterLink,
+  IonRouterOutlet
 } from '@ionic/angular';
+
 import { addIcons } from 'ionicons';
+
 import {
-  mailOutline,
-  mailSharp,
-  paperPlaneOutline,
-  paperPlaneSharp,
-  heartOutline,
-  heartSharp,
-  archiveOutline,
-  archiveSharp,
-  trashOutline,
-  trashSharp,
-  warningOutline,
-  warningSharp,
-  bookmarkOutline,
-  bookmarkSharp,
+  homeOutline,
+  cameraOutline,
+  flashOutline,
+  phonePortraitOutline,
+  locateOutline,
+  speedometerOutline
 } from 'ionicons/icons';
 
 @Component({
@@ -46,41 +41,32 @@ import {
     IonContent,
     IonList,
     IonListHeader,
-    IonNote,
     IonMenuToggle,
     IonItem,
     IonIcon,
     IonLabel,
-    IonRouterLink,
-    IonRouterOutlet,
+    IonRouterOutlet
   ],
 })
 export class AppComponent {
+
   protected readonly appPages = [
-    { title: 'Inbox', url: '/folder/Inbox', icon: 'mail' },
-    { title: 'Outbox', url: '/folder/Outbox', icon: 'paper-plane' },
-    { title: 'Favorites', url: '/folder/Favorites', icon: 'heart' },
-    { title: 'Archived', url: '/folder/Archived', icon: 'archive' },
-    { title: 'Trash', url: '/folder/Trash', icon: 'trash' },
-    { title: 'Spam', url: '/folder/Spam', icon: 'warning' },
+    { title: 'Início', url: '/folder/Inbox', icon: 'home' },
+    { title: 'GPS', url: '/gps', icon: 'locate' },
+    { title: 'Acelerômetro', url: '/experimento', icon: 'speedometer' },
+    { title: 'Câmera', url: '/camera', icon: 'camera' },
+    { title: 'Lanterna', url: '/flash', icon: 'flash' },
+    { title: 'Bateria e Dispositivo', url: '/dispositivo', icon: 'phone-portrait' }
   ];
-  protected readonly labels = ['Family', 'Friends', 'Notes', 'Work', 'Travel', 'Reminders'];
+
   constructor() {
     addIcons({
-      mailOutline,
-      mailSharp,
-      paperPlaneOutline,
-      paperPlaneSharp,
-      heartOutline,
-      heartSharp,
-      archiveOutline,
-      archiveSharp,
-      trashOutline,
-      trashSharp,
-      warningOutline,
-      warningSharp,
-      bookmarkOutline,
-      bookmarkSharp,
+      homeOutline,
+      cameraOutline,
+      flashOutline,
+      phonePortraitOutline,
+      locateOutline,
+      speedometerOutline
     });
   }
 }

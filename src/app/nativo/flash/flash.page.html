@@ -1,0 +1,31 @@
+
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Lanterna</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Controle da lanterna</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <p>
+        Estado da lanterna:
+        {{ isLigada ? 'Ligada' : 'Desligada' }}
+      </p>
+
+      <ion-button
+        expand="block"
+        (click)="alternarLanterna()">
+        {{ isLigada ? 'Desligar lanterna' : 'Ligar lanterna' }}
+      </ion-button>
+    </ion-card-content>
+  </ion-card>
+</ion-content>

@@ -1,0 +1,41 @@
+
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>GPS</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Minha localização</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+
+      <p><strong>Latitude:</strong>
+        {{ latitude !== null ? latitude : 'Não disponível' }}
+      </p>
+
+      <p><strong>Longitude:</strong>
+        {{ longitude !== null ? longitude : 'Não disponível' }}
+      </p>
+
+      <p><strong>Precisão:</strong>
+        {{ precisao !== null ? precisao + ' metros' : 'Não disponível' }}
+      </p>
+
+      <p>{{ mensagem }}</p>
+
+      <ion-button expand="block" (click)="obterLocalizacao()">
+        Obter localização
+      </ion-button>
+
+    </ion-card-content>
+  </ion-card>
+
+</ion-content>

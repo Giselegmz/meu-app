@@ -1,0 +1,49 @@
+
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>Bateria e Dispositivo</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="ion-padding">
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Informações da bateria</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <p>
+        Nível da bateria:
+        {{ batteryLevel !== null ? batteryLevel + '%' : 'Não disponível' }}
+      </p>
+
+      <p>
+        Estado:
+        {{ isCharging ? 'Carregando' : 'Não está carregando' }}
+      </p>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-card>
+    <ion-card-header>
+      <ion-card-title>Informações do dispositivo</ion-card-title>
+    </ion-card-header>
+
+    <ion-card-content>
+      <p><strong>Modelo:</strong> {{ model }}</p>
+      <p><strong>Plataforma:</strong> {{ platform }}</p>
+      <p><strong>Versão do sistema:</strong> {{ osVersion }}</p>
+      <p><strong>Fabricante:</strong> {{ manufacturer }}</p>
+      <p><strong>Dispositivo virtual:</strong> {{ isVirtual ? 'Sim' : 'Não' }}</p>
+    </ion-card-content>
+  </ion-card>
+
+  <ion-button expand="block" (click)="carregarInformacoes()">
+    Atualizar informações
+  </ion-button>
+
+</ion-content>
