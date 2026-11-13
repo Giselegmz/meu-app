@@ -2,37 +2,28 @@
 <ion-app>
   <ion-split-pane contentId="main-content">
 
-    <ion-menu contentId="main-content" type="overlay">
-      <ion-content>
-
-        <ion-list>
-          <ion-list-header>Meu Aplicativo</ion-list-header>
-          
-
-          @for (p of appPages; track p.url) {
-            <ion-menu-toggle auto-hide="false">
-              <ion-item
-                routerDirection="root"
-                [routerLink]="[p.url]"
-                lines="none"
-                detail="false"
-                routerLinkActive="selected">
-
-                <ion-icon
-                  slot="start"
-                  [name]="p.icon + '-outline'">
-                </ion-icon>
-
-                <ion-label>{{ p.title }}</ion-label>
-
-              </ion-item>
-            </ion-menu-toggle>
-          }
-
-        </ion-list>
-
-      </ion-content>
-    </ion-menu>
+    @if (auth.authenticated()) {
+      <ion-menu contentId="main-content" type="overlay">
+        <ion-content>
+          <ion-list>
+            <ion-list-header>One Diário</ion-list-header>
+            @for (p of appPages; track p.url) {
+              <ion-menu-toggle auto-hide="false">
+                <ion-item
+                  routerDirection="root"
+                  [routerLink]="[p.url]"
+                  lines="none"
+                  detail="false"
+                  routerLinkActive="selected">
+                  <ion-icon slot="start" [name]="p.icon + '-outline'"></ion-icon>
+                  <ion-label>{{ p.title }}</ion-label>
+                </ion-item>
+              </ion-menu-toggle>
+            }
+          </ion-list>
+        </ion-content>
+      </ion-menu>
+    }
 
     <ion-router-outlet id="main-content"></ion-router-outlet>
 

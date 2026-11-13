@@ -1,0 +1,83 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-menu-button></ion-menu-button>
+    </ion-buttons>
+    <ion-title>One Diário</ion-title>
+    <ion-buttons slot="end">
+      <ion-button fill="clear" aria-label="Bloquear diário" (click)="lock()">
+        <ion-icon slot="icon-only" name="lock-closed-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="diary-content">
+  <main class="diary-shell">
+    <section class="intro-row">
+      <div>
+        <p class="eyebrow">SEU ESPAÇO PESSOAL</p>
+        <h1>Meu diário</h1>
+        <p class="subheading">Guarde seus pensamentos com carinho.</p>
+      </div>
+      <span class="intro-mark" aria-hidden="true">✦</span>
+    </section>
+
+    <div class="search-wrap">
+      <ion-searchbar
+        placeholder="Pesquisar anotações"
+        aria-label="Pesquisar anotações"
+        [debounce]="250"
+        (ionInput)="updateSearch($event)">
+      </ion-searchbar>
+    </div>
+
+    <section class="history-heading">
+      <div>
+        <h2>Histórico</h2>
+        <p>{{ entries.length }} {{ entries.length === 1 ? 'anotação' : 'anotações' }}</p>
+      </div>
+      <ion-button class="new-entry" (click)="createEntry()">
+        <ion-icon slot="start" name="add-outline"></ion-icon>
+        Nova anotação
+      </ion-button>
+    </section>
+
+    @if (loading) {
+      <p class="state-message">Carregando seu histórico…</p>
+    } @else if (error) {
+      <p class="state-message error-message" role="alert">{{ error }}</p>
+    } @else if (entries.length === 0) {
+      <section class="empty-state">
+        <ion-icon name="book-outline"></ion-icon>
+        <h3>{{ searchTerm ? 'Nenhum resultado' : 'Seu diário começa aqui' }}</h3>
+        <p>{{ searchTerm ? 'Tente buscar por outra palavra.' : 'Crie sua primeira anotação para guardar este momento.' }}</p>
+        @if (!searchTerm) {
+          <ion-button fill="outline" (click)="createEntry()">Escrever primeira anotação</ion-button>
+        }
+      </section>
+    } @else {
+      <div class="entry-list">
+        @for (entry of entries; track entry.id) {
+          <article class="entry-card" tabindex="0" (click)="editEntry(entry)" (keydown.enter)="editEntry(entry)">
+            <div class="entry-card-top">
+              <span class="entry-date">{{ dateLabel(entry.createdAt) }}</span>
+              <ion-button
+                fill="clear"
+                class="delete-button"
+                aria-label="Excluir anotação"
+                (click)="deleteEntry(entry, $event)">
+                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+              </ion-button>
+            </div>
+            <h3>{{ entry.title.trim() || 'Sem título' }}</h3>
+            <p class="entry-preview">{{ preview(entry.content) }}</p>
+            @if (entry.updatedAt !== entry.createdAt) {
+              <p class="updated-date">Editada {{ dateLabel(entry.updatedAt) }}</p>
+            }
+          </article>
+        }
+      </div>
+    }
+  </main>
+</ion-content>

@@ -1,15 +1,21 @@
-
 name: Gerar APK Android
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Baixar projeto
@@ -43,11 +49,22 @@ jobs:
 
       - name: Verificar permissões do APK
         run: |
+          APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK_PATH"
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -n 1)
-          "$AAPT" dump permissions android/app/build/outputs/apk/debug/app-debug.apk
+          test -n "$AAPT"
+          "$AAPT" dump permissions "$APK_PATH"
 
-      - name: Disponibilizar APK
+      - name: Preparar APK para download
+        run: |
+          mkdir -p APK
+          cp android/app/build/outputs/apk/debug/app-debug.apk APK/One-Diario.apk
+          test -s APK/One-Diario.apk
+
+      - name: Disponibilizar Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: aplicativo-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: One-Diario
+          path: APK/One-Diario.apk
+          if-no-files-found: error
+          retention-days: 14

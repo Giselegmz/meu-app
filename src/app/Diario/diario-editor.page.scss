@@ -1,0 +1,70 @@
+.editor-content {
+  --background: #171719;
+  --color: #f4edef;
+}
+
+.editor-shell {
+  width: min(100% - 32px, 760px);
+  margin: 0 auto;
+  padding: 20px 0 48px;
+}
+
+.save-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+  color: #d9a1b2;
+  font-size: 11px;
+}
+
+.save-indicator ion-icon {
+  font-size: 15px;
+}
+
+.save-indicator.is-saving {
+  color: #aaa0a5;
+}
+
+.created-at,
+.updated-at {
+  color: #aaa0a5;
+  font-size: 11px;
+}
+
+.title-input {
+  margin: 20px 0 14px;
+  --background: #262326;
+  --color: #f4edef;
+  --highlight-color-focused: #b96d88;
+  --border-radius: 13px;
+}
+
+.content-input {
+  min-height: 52vh;
+  padding: 13px 15px;
+  border: 1px solid #393438;
+  border-radius: 14px;
+  background: #262326;
+  color: #f4edef;
+  --highlight-color-focused: #b96d88;
+  line-height: 1.65;
+}
+
+.content-input::part(label) {
+  color: #d9a1b2;
+}
+
+.updated-at {
+  margin-top: 13px;
+}
+
+.editor-state {
+  padding: 32px 12px;
+  color: #bcb2b6;
+  text-align: center;
+}
+
+.error {
+  color: #ffb0a9;
+}
