@@ -1,0 +1,52 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-buttons slot="start">
+      <ion-button fill="clear" aria-label="Voltar ao histórico" (click)="backToHistory()">
+        <ion-icon slot="icon-only" name="arrow-back-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+    <ion-title>Minha anotação</ion-title>
+    <ion-buttons slot="end">
+      <span class="save-indicator" [class.is-saving]="saving">
+        <ion-icon name="checkmark-outline"></ion-icon>
+        {{ saving ? 'Salvando' : 'Salvo' }}
+      </span>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="editor-content">
+  <main class="editor-shell">
+    @if (loading) {
+      <p class="editor-state">Abrindo anotação…</p>
+    } @else if (error && !entry) {
+      <p class="editor-state error" role="alert">{{ error }}</p>
+      <ion-button fill="outline" (click)="backToHistory()">Voltar ao histórico</ion-button>
+    } @else if (entry) {
+      <p class="created-at">Criada em {{ dateLabel(entry.createdAt) }}</p>
+      <ion-input
+        class="title-input"
+        label="Título"
+        labelPlacement="stacked"
+        placeholder="Dê um título a este momento"
+        maxlength="100"
+        [value]="title"
+        (ionInput)="title = $any($event).detail.value ?? ''; onTextChanged()">
+      </ion-input>
+      <ion-textarea
+        class="content-input"
+        label="Escreva livremente"
+        labelPlacement="stacked"
+        placeholder="O que você gostaria de registrar hoje?"
+        [value]="content"
+        [autoGrow]="true"
+        rows="12"
+        (ionInput)="content = $any($event).detail.value ?? ''; onTextChanged()">
+      </ion-textarea>
+      <p class="updated-at">Última edição: {{ dateLabel(entry.updatedAt) }}</p>
+      @if (error) {
+        <p class="error" role="alert">{{ error }}</p>
+      }
+    }
+  </main>
+</ion-content>

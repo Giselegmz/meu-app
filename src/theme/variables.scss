@@ -1,2 +1,49 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
+/* One Diário color system */
+:root,
+body,
+.ion-palette-dark {
+  color-scheme: dark;
+
+  --ion-color-primary: #b96d88;
+  --ion-color-primary-rgb: 185, 109, 136;
+  --ion-color-primary-contrast: #fff9fb;
+  --ion-color-primary-contrast-rgb: 255, 249, 251;
+  --ion-color-primary-shade: #a36078;
+  --ion-color-primary-tint: #c07f97;
+
+  --ion-color-secondary: #d9a1b2;
+  --ion-color-secondary-rgb: 217, 161, 178;
+  --ion-color-secondary-contrast: #171719;
+  --ion-color-secondary-contrast-rgb: 23, 23, 25;
+  --ion-color-secondary-shade: #bf8e9d;
+  --ion-color-secondary-tint: #ddaaba;
+
+  --ion-color-dark: #262326;
+  --ion-color-dark-rgb: 38, 35, 38;
+  --ion-color-dark-contrast: #f4edef;
+  --ion-color-dark-contrast-rgb: 244, 237, 239;
+  --ion-color-dark-shade: #211f21;
+  --ion-color-dark-tint: #3c393c;
+
+  --ion-color-medium: #a99da3;
+  --ion-color-medium-rgb: 169, 157, 163;
+  --ion-color-medium-contrast: #171719;
+  --ion-color-medium-contrast-rgb: 23, 23, 25;
+  --ion-color-medium-shade: #958a8f;
+  --ion-color-medium-tint: #b2a7ad;
+
+  --ion-background-color: #171719;
+  --ion-background-color-rgb: 23, 23, 25;
+  --ion-text-color: #f4edef;
+  --ion-text-color-rgb: 244, 237, 239;
+  --ion-text-color-step-150: #c5bec1;
+  --ion-text-color-step-600: #777276;
+  --ion-item-background: #262326;
+  --ion-card-background: #262326;
+  --ion-toolbar-background: #171719;
+  --ion-toolbar-color: #f4edef;
+  --ion-tab-bar-background: #171719;
+  --ion-tab-bar-color: #a99da3;
+  --ion-tab-bar-color-selected: #d9a1b2;
+  --ion-border-color: #393438;
+}

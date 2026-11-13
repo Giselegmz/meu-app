@@ -1,0 +1,53 @@
+<ion-content [fullscreen]="true" class="access-content">
+  <main class="access-shell">
+    <div class="brand-mark" aria-hidden="true">OD</div>
+    <p class="eyebrow">UM ESPAÇO SÓ SEU</p>
+    <h1>One Diário</h1>
+    <h2>{{ heading }}</h2>
+    <p class="instruction">{{ instruction }}</p>
+
+    <div class="pin-dots" aria-label="PIN digitado">
+      @for (dot of [0, 1, 2, 3]; track dot) {
+        <span [class.filled]="code.length > dot"></span>
+      }
+    </div>
+
+    @if (auth.alarmActive()) {
+      <p class="alarm-message" role="alert">Alarme ativado. Desbloqueie com o PIN correto para interrompê-lo.</p>
+    }
+    @if (message) {
+      <p class="feedback" role="status">{{ message }}</p>
+    }
+    @if (auth.initializationError()) {
+      <ion-button fill="outline" class="retry-button" (click)="retryInitialization()">
+        Tentar novamente
+      </ion-button>
+    }
+    @if (!auth.requiresSetup() && !auth.initializationError()) {
+      <p class="attempts">Tentativas incorretas: {{ auth.failedAttempts() }} de 3</p>
+    }
+
+    <div class="number-pad" aria-label="Teclado numérico">
+      @for (digit of digits; track digit) {
+        <button
+          type="button"
+          class="number-key"
+          [class.utility-key]="digit === '⌫' || digit === 'Limpar'"
+          [disabled]="busy || !!auth.initializationError()"
+          [attr.aria-label]="digit === '⌫' ? 'Apagar último número' : digit === 'Limpar' ? 'Limpar PIN' : digit"
+          (click)="press(digit)">
+          {{ digit }}
+        </button>
+      }
+    </div>
+
+    <ion-button
+      expand="block"
+      class="confirm-button"
+      [disabled]="code.length !== 4 || busy || !!auth.initializationError()"
+      (click)="submit()">
+      {{ auth.requiresSetup() ? (confirming ? 'Confirmar PIN' : 'Continuar') : 'Desbloquear' }}
+    </ion-button>
+    <p class="privacy-note">Su conteúdo permanece protegido neste dispositivo.</p>
+  </main>
+</ion-content>
