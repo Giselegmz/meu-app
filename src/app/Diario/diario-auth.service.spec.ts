@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   state: { failedAttempts: 0, alarmActive: false },
   storage: {
     initialize: vi.fn(),
+    getInitializationDiagnostics: vi.fn(),
     getSecurityRecord: vi.fn(),
     getSecurityState: vi.fn(),
     saveSecurityRecord: vi.fn(),
@@ -63,13 +64,7 @@ function createTestCrypto(): Crypto {
 const testCrypto = createTestCrypto();
 
 async function pinHash(pin: string, salt: string, iterations = 150_000): Promise<string> {
-  const key = await testCrypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(pin),
-    'PBKDF2',
-    false,
-    ['deriveBits'],
-  );
+  const key = await testCrypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
   const result = await testCrypto.subtle.deriveBits(
     {
       name: 'PBKDF2',
@@ -94,6 +89,12 @@ describe('DiarioAuthService', () => {
     mocks.state = { failedAttempts: 0, alarmActive: false };
     vi.clearAllMocks();
     mocks.storage.initialize.mockResolvedValue(undefined);
+    mocks.storage.getInitializationDiagnostics.mockReturnValue({
+      databaseExists: false,
+      encryptionKeyAvailable: null,
+      connectionOpen: false,
+      sqliteInitialized: false,
+    });
     mocks.storage.getSecurityRecord.mockImplementation(async () => mocks.record);
     mocks.storage.getSecurityState.mockImplementation(async () => mocks.state);
     mocks.storage.saveSecurityRecord.mockImplementation(async (record) => {
@@ -179,6 +180,36 @@ describe('DiarioAuthService', () => {
     expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
   });
 
+  it('reports storage initialization failure separately from an existing PIN', async () => {
+    mocks.storage.initialize.mockRejectedValueOnce(new Error('Open: arquivo SQLite não encontrado'));
+
+    await auth.initialize();
+
+    expect(auth.initializationError()).toContain('SQLite não encontrado');
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.diagnostics().connectionOpen).toBe(false);
+    expect(auth.diagnostics().secureCredentialPresent).toBeNull();
+    expect(auth.authenticated()).toBe(false);
+    expect(mocks.storage.getSecurityRecord).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid secure credential without offering PIN setup', async () => {
+    mocks.record = {
+      salt: '',
+      hash: '',
+      iterations: 600_000,
+      failedAttempts: 0,
+      alarmActive: false,
+    };
+
+    await auth.initialize();
+
+    expect(auth.initializationError()).toContain('incompleto ou inválido');
+    expect(auth.diagnostics().secureCredentialPresent).toBe(true);
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.authenticated()).toBe(false);
+  });
+
   it('creates and validates a PIN before granting access', async () => {
     await auth.initialize();
 
@@ -238,5 +269,15 @@ describe('DiarioAuthService', () => {
     expect(auth.initializationError()).toContain('incompleta');
     expect(auth.authenticated()).toBe(false);
     expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
+  });
+
+  it('treats an empty legacy value as an incomplete credential instead of allowing replacement', async () => {
+    mocks.legacy.set('diario_pin_salt', '');
+
+    await auth.initialize();
+
+    expect(auth.initializationError()).toContain('incompleta');
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.authenticated()).toBe(false);
   });
 });

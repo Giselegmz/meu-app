@@ -8,36 +8,56 @@
 
     <div class="pin-dots" aria-label="PIN digitado">
       @for (dot of [0, 1, 2, 3]; track dot) {
-        <span [class.filled]="code.length > dot"></span>
+      <span [class.filled]="code.length > dot"></span>
       }
     </div>
 
     @if (auth.alarmActive()) {
-      <p class="alarm-message" role="alert">Alarme ativado. Desbloqueie com o PIN correto para interrompê-lo.</p>
-    }
-    @if (message) {
-      <p class="feedback" role="status">{{ message }}</p>
-    }
-    @if (auth.initializationError()) {
-      <ion-button fill="outline" class="retry-button" (click)="retryInitialization()">
-        Tentar novamente
-      </ion-button>
-    }
-    @if (!auth.requiresSetup() && !auth.initializationError()) {
-      <p class="attempts">Tentativas incorretas: {{ auth.failedAttempts() }} de 3</p>
+    <p class="alarm-message" role="alert">Alarme ativado. Desbloqueie com o PIN correto para interrompê-lo.</p>
+    } @if (message) {
+    <p class="feedback" role="status">{{ message }}</p>
+    } @if (auth.initializationError()) {
+    <ion-button fill="outline" class="retry-button" (click)="retryInitialization()"> Tentar novamente </ion-button>
     }
 
+    <ion-button
+      fill="clear"
+      class="diagnostics-toggle"
+      [attr.aria-expanded]="diagnosticsVisible"
+      (click)="diagnosticsVisible = !diagnosticsVisible"
+    >
+      {{ diagnosticsVisible ? 'Ocultar diagnóstico' : 'Ver diagnóstico temporário' }}
+    </ion-button>
+    @if (diagnosticsVisible) {
+    <section class="diagnostics" aria-label="Diagnóstico temporário da autenticação">
+      <p>Indicadores de estado — sem dados de credenciais:</p>
+      <ul>
+        <li>Registro em diary_security: {{ diagnosticState(auth.diagnostics().secureCredentialPresent) }}</li>
+        <li>Preferências legadas de PIN existem: {{ diagnosticState(legacyPreferencesExist) }}</li>
+        <li>Preferências legadas completas: {{ diagnosticState(legacyPreferencesComplete) }}</li>
+        <li>diario_pin_salt presente: {{ diagnosticState(auth.diagnostics().legacySaltPresent) }}</li>
+        <li>diario_pin_hash presente: {{ diagnosticState(auth.diagnostics().legacyHashPresent) }}</li>
+        <li>requiresSetup: {{ auth.requiresSetup() ? 'true' : 'false' }}</li>
+        <li>Erro de inicialização presente: {{ auth.initializationError() ? 'sim' : 'não' }}</li>
+        <li>Chave de criptografia disponível: {{ diagnosticState(auth.diagnostics().encryptionKeyAvailable) }}</li>
+        <li>Banco de dados existe: {{ diagnosticState(auth.diagnostics().databaseExists) }}</li>
+      </ul>
+    </section>
+    } @if (!auth.requiresSetup() && !auth.initializationError()) {
+    <p class="attempts">Tentativas incorretas: {{ auth.failedAttempts() }} de 3</p>
+    } @if (!auth.initializationError()) {
     <div class="number-pad" aria-label="Teclado numérico">
       @for (digit of digits; track digit) {
-        <button
-          type="button"
-          class="number-key"
-          [class.utility-key]="digit === '⌫' || digit === 'Limpar'"
-          [disabled]="busy || !!auth.initializationError()"
-          [attr.aria-label]="digit === '⌫' ? 'Apagar último número' : digit === 'Limpar' ? 'Limpar PIN' : digit"
-          (click)="press(digit)">
-          {{ digit }}
-        </button>
+      <button
+        type="button"
+        class="number-key"
+        [class.utility-key]="digit === '⌫' || digit === 'Limpar'"
+        [disabled]="busy || !!auth.initializationError()"
+        [attr.aria-label]="digit === '⌫' ? 'Apagar último número' : digit === 'Limpar' ? 'Limpar PIN' : digit"
+        (click)="press(digit)"
+      >
+        {{ digit }}
+      </button>
       }
     </div>
 
@@ -45,9 +65,11 @@
       expand="block"
       class="confirm-button"
       [disabled]="code.length !== 4 || busy || !!auth.initializationError()"
-      (click)="submit()">
+      (click)="submit()"
+    >
       {{ auth.requiresSetup() ? (confirming ? 'Confirmar PIN' : 'Continuar') : 'Desbloquear' }}
     </ion-button>
+    }
     <p class="privacy-note">Su conteúdo permanece protegido neste dispositivo.</p>
   </main>
 </ion-content>

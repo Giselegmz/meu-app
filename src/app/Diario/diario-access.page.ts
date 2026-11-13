@@ -18,6 +18,7 @@ export class DiarioAccessPage implements OnInit {
   confirming = false;
   message = '';
   busy = false;
+  diagnosticsVisible = false;
 
   constructor(
     protected readonly auth: DiarioAuthService,
@@ -89,6 +90,7 @@ export class DiarioAccessPage implements OnInit {
   }
 
   get heading(): string {
+    if (this.auth.initializationError()) return 'Diário indisponível';
     if (this.auth.requiresSetup()) {
       return this.confirming ? 'Confirme seu PIN' : 'Crie seu PIN';
     }
@@ -96,11 +98,30 @@ export class DiarioAccessPage implements OnInit {
   }
 
   get instruction(): string {
+    if (this.auth.initializationError()) {
+      return 'Não foi possível confirmar o estado do diário. Nenhum PIN foi aceito. Tente novamente.';
+    }
     if (this.auth.requiresSetup()) {
       return this.confirming
         ? 'Digite novamente os quatro números escolhidos.'
         : 'Escolha quatro números para proteger suas anotações.';
     }
     return 'Digite seu PIN para continuar.';
+  }
+
+  diagnosticState(value: boolean | null): string {
+    return value === null ? 'não verificado' : value ? 'sim' : 'não';
+  }
+
+  get legacyPreferencesExist(): boolean | null {
+    const { legacySaltPresent, legacyHashPresent } = this.auth.diagnostics();
+    if (legacySaltPresent === null || legacyHashPresent === null) return null;
+    return legacySaltPresent || legacyHashPresent;
+  }
+
+  get legacyPreferencesComplete(): boolean | null {
+    const { legacySaltPresent, legacyHashPresent } = this.auth.diagnostics();
+    if (legacySaltPresent === null || legacyHashPresent === null) return null;
+    return legacySaltPresent && legacyHashPresent;
   }
 }

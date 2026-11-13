@@ -5,6 +5,13 @@ import type { DiarySecurityRecord, DiarioEntry, DiarioPhoto } from './diario-ent
 
 const DATABASE = 'one_diario';
 
+export interface DiarioStorageDiagnostics {
+  databaseExists: boolean | null;
+  encryptionKeyAvailable: boolean | null;
+  connectionOpen: boolean;
+  sqliteInitialized: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class DiarioStorageService {
   private readonly sqlite = new SQLiteConnection(CapacitorSQLite);
@@ -13,6 +20,16 @@ export class DiarioStorageService {
   private initialization?: Promise<void>;
   private sessionUnlocked = false;
   private readonly native = Capacitor.isNativePlatform();
+  private diagnostics: DiarioStorageDiagnostics = {
+    databaseExists: null,
+    encryptionKeyAvailable: null,
+    connectionOpen: false,
+    sqliteInitialized: false,
+  };
+
+  getInitializationDiagnostics(): DiarioStorageDiagnostics {
+    return { ...this.diagnostics, connectionOpen: this.databaseOpened };
+  }
 
   initialize(): Promise<void> {
     this.initialization ??= this.initializeDatabase().catch((error: unknown) => {
@@ -26,20 +43,40 @@ export class DiarioStorageService {
     let databaseExists = false;
     if (!this.native) {
       await this.sqlite.initWebStore();
-      databaseExists = (await this.sqlite.isDatabase(DATABASE)).result ?? false;
+      databaseExists = await this.checkDatabaseExists();
     } else {
-      const secret = await this.sqlite.isSecretStored();
-      if (!secret.result) {
-        const existing = await this.sqlite.isDatabase(DATABASE);
-        if (existing.result) {
+      let secret: unknown;
+      try {
+        secret = await this.sqlite.isSecretStored();
+      } catch {
+        this.diagnostics = { ...this.diagnostics, encryptionKeyAvailable: null };
+        throw new Error('Não foi possível verificar a chave de criptografia do Android. O diário permanece bloqueado.');
+      }
+      if (
+        typeof secret !== 'object' ||
+        secret === null ||
+        Array.isArray(secret) ||
+        !Object.prototype.hasOwnProperty.call(secret, 'result') ||
+        typeof (secret as { result?: unknown }).result !== 'boolean'
+      ) {
+        this.diagnostics = { ...this.diagnostics, encryptionKeyAvailable: null };
+        throw new Error(
+          'Não foi possível confirmar a disponibilidade da chave de criptografia. O diário permanece bloqueado.',
+        );
+      }
+      const secretAvailable = (secret as { result: boolean }).result;
+      this.diagnostics = { ...this.diagnostics, encryptionKeyAvailable: secretAvailable };
+      if (!secretAvailable) {
+        databaseExists = await this.checkDatabaseExists();
+        if (databaseExists) {
           throw new Error(
             'A chave segura do diário não está disponível. Os dados foram mantidos e nenhum conteúdo foi aberto.',
           );
         }
-        databaseExists = existing.result ?? false;
         await this.sqlite.setEncryptionSecret(this.createRandomSecret());
+        this.diagnostics = { ...this.diagnostics, encryptionKeyAvailable: true };
       } else {
-        databaseExists = (await this.sqlite.isDatabase(DATABASE)).result ?? false;
+        databaseExists = await this.checkDatabaseExists();
       }
     }
 
@@ -50,7 +87,7 @@ export class DiarioStorageService {
         : await this.sqlite.createConnection(
             DATABASE,
             this.native,
-            this.native ? 'encryption' : 'no-encryption',
+            this.native ? (databaseExists ? 'encryption' : 'secret') : 'no-encryption',
             1,
             false,
           );
@@ -58,6 +95,7 @@ export class DiarioStorageService {
     if (!this.databaseOpened) {
       await this.database.open();
       this.databaseOpened = true;
+      this.diagnostics = { ...this.diagnostics, connectionOpen: true };
     }
 
     // SQLCipher protects native database files. Android stores its database
@@ -97,6 +135,17 @@ export class DiarioStorageService {
     if (!databaseExists && !this.native) {
       await this.sqlite.saveToStore(DATABASE);
     }
+    this.diagnostics = { ...this.diagnostics, sqliteInitialized: true };
+  }
+
+  private async checkDatabaseExists(): Promise<boolean> {
+    const status = await this.sqlite.isDatabase(DATABASE);
+    if (!status || (status.result !== true && status.result !== false)) {
+      this.diagnostics = { ...this.diagnostics, databaseExists: null };
+      throw new Error('Não foi possível confirmar se o banco do diário existe. Nenhum banco substituto foi criado.');
+    }
+    this.diagnostics = { ...this.diagnostics, databaseExists: status.result };
+    return status.result;
   }
 
   async getSecurityRecord(): Promise<DiarySecurityRecord | null> {

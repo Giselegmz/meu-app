@@ -1,8 +1,14 @@
 import { Injectable, signal } from '@angular/core';
 import { Preferences } from '@capacitor/preferences';
 import { Haptics } from '@capacitor/haptics';
-import { DiarioStorageService } from './diario-storage.service';
+import { DiarioStorageService, type DiarioStorageDiagnostics } from './diario-storage.service';
 import type { DiarySecurityRecord } from './diario-entry.model';
+
+export interface DiarioAuthDiagnostics extends DiarioStorageDiagnostics {
+  secureCredentialPresent: boolean | null;
+  legacySaltPresent: boolean | null;
+  legacyHashPresent: boolean | null;
+}
 
 const LEGACY_ITERATIONS = 150_000;
 const CURRENT_ITERATIONS = 600_000;
@@ -16,6 +22,15 @@ export class DiarioAuthService {
   readonly failedAttempts = signal(0);
   readonly alarmActive = signal(false);
   readonly initializationError = signal('');
+  readonly diagnostics = signal<DiarioAuthDiagnostics>({
+    databaseExists: null,
+    encryptionKeyAvailable: null,
+    connectionOpen: false,
+    sqliteInitialized: false,
+    secureCredentialPresent: null,
+    legacySaltPresent: null,
+    legacyHashPresent: null,
+  });
 
   private initialization?: Promise<void>;
   private audioContext?: AudioContext;
@@ -38,16 +53,31 @@ export class DiarioAuthService {
   private async loadSecureState(): Promise<void> {
     try {
       await this.storage.initialize();
+      this.updateStorageDiagnostics();
       const credential = await this.storage.getSecurityRecord();
+      this.diagnostics.update((state) => ({ ...state, secureCredentialPresent: credential !== null }));
       const legacySalt = await Preferences.get({ key: 'diario_pin_salt' });
+      const hasLegacySalt = legacySalt.value !== null;
+      this.diagnostics.update((state) => ({ ...state, legacySaltPresent: hasLegacySalt }));
       const legacyHash = await Preferences.get({ key: 'diario_pin_hash' });
+      const hasLegacyHash = legacyHash.value !== null;
+      this.diagnostics.update((state) => ({ ...state, legacyHashPresent: hasLegacyHash }));
       const secureState = credential ?? (await this.storage.getSecurityState());
+
+      if (credential && !this.isValidCredential(credential)) {
+        throw new Error(
+          'O registro seguro do PIN está incompleto ou inválido. O diário permanece bloqueado e os dados foram preservados.',
+        );
+      }
 
       this.failedAttempts.set(secureState.failedAttempts);
       this.alarmActive.set(secureState.alarmActive);
-      this.requiresSetup.set(!credential && !legacySalt.value && !legacyHash.value);
+      this.requiresSetup.set(!credential && !hasLegacySalt && !hasLegacyHash);
 
-      if (!credential && ((!legacySalt.value) !== (!legacyHash.value))) {
+      if (
+        !credential &&
+        (hasLegacySalt !== hasLegacyHash || (hasLegacySalt && (!legacySalt.value || !legacyHash.value)))
+      ) {
         this.initializationError.set(
           'A credencial antiga está incompleta. O diário continua bloqueado e os dados foram preservados.',
         );
@@ -59,6 +89,20 @@ export class DiarioAuthService {
       }
       if (this.alarmActive()) this.startAlarmLoop();
     } catch (error) {
+      this.updateStorageDiagnostics();
+      try {
+        const [legacySalt, legacyHash] = await Promise.all([
+          Preferences.get({ key: 'diario_pin_salt' }),
+          Preferences.get({ key: 'diario_pin_hash' }),
+        ]);
+        this.diagnostics.update((state) => ({
+          ...state,
+          legacySaltPresent: legacySalt.value !== null,
+          legacyHashPresent: legacyHash.value !== null,
+        }));
+      } catch {
+        // Diagnostics remain unknown if even the preferences API is unavailable.
+      }
       this.initializationError.set(
         error instanceof Error
           ? error.message
@@ -67,6 +111,28 @@ export class DiarioAuthService {
       this.requiresSetup.set(false);
     } finally {
       this.ready.set(true);
+    }
+  }
+
+  private updateStorageDiagnostics(): void {
+    const storage = this.storage.getInitializationDiagnostics();
+    this.diagnostics.update((state) => ({ ...state, ...storage }));
+  }
+
+  private isValidCredential(record: DiarySecurityRecord): boolean {
+    if (
+      !record.salt ||
+      !record.hash ||
+      !Number.isSafeInteger(record.iterations) ||
+      record.iterations < 1 ||
+      record.iterations > 1_000_000
+    ) {
+      return false;
+    }
+    try {
+      return atob(record.salt).length >= 8 && atob(record.hash).length === 32;
+    } catch {
+      return false;
     }
   }
 
@@ -192,9 +258,7 @@ export class DiarioAuthService {
       this.startAlarmLoop();
       return 'Três tentativas incorretas. Alarme ativado; o diário continua bloqueado.';
     }
-    return next === 2
-      ? 'PIN incorreto. Resta uma tentativa.'
-      : 'PIN incorreto. Tente novamente.';
+    return next === 2 ? 'PIN incorreto. Resta uma tentativa.' : 'PIN incorreto. Tente novamente.';
   }
 
   private async clearAlarmAndFailures(): Promise<void> {
@@ -217,18 +281,8 @@ export class DiarioAuthService {
   private async hashPin(pin: string, saltBase64: string, iterations: number): Promise<string> {
     const salt = Uint8Array.from(atob(saltBase64), (char) => char.charCodeAt(0));
     const subtle = this.requireWebCrypto().subtle;
-    const material = await subtle.importKey(
-      'raw',
-      new TextEncoder().encode(pin),
-      'PBKDF2',
-      false,
-      ['deriveBits'],
-    );
-    const result = await subtle.deriveBits(
-      { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-      material,
-      256,
-    );
+    const material = await subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+    const result = await subtle.deriveBits({ name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, material, 256);
     return btoa(String.fromCharCode(...new Uint8Array(result)));
   }
 

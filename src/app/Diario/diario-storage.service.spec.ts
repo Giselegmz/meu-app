@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => {
     query: vi.fn(),
     run: vi.fn(),
   };
+  const platform = { native: false };
   const sqlite = {
     initWebStore: vi.fn(),
     isDatabase: vi.fn(),
@@ -20,7 +21,7 @@ const mocks = vi.hoisted(() => {
     isSecretStored: vi.fn(),
     setEncryptionSecret: vi.fn(),
   };
-  return { database, sqlite };
+  return { database, platform, sqlite };
 });
 
 vi.mock('@capacitor-community/sqlite', () => ({
@@ -31,6 +32,7 @@ vi.mock('@capacitor-community/sqlite', () => ({
     }
   },
 }));
+vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => mocks.platform.native } }));
 
 import { DiarioStorageService } from './diario-storage.service';
 
@@ -39,6 +41,7 @@ describe('DiarioStorageService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.platform.native = false;
     mocks.sqlite.isDatabase.mockResolvedValue({ result: true });
     mocks.sqlite.isConnection.mockResolvedValue({ result: false });
     mocks.sqlite.retrieveConnection.mockResolvedValue(mocks.database);
@@ -124,6 +127,131 @@ describe('DiarioStorageService', () => {
     expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
     expect(mocks.database.open).toHaveBeenCalledOnce();
   });
+
+  it('opens a new encrypted Android database in secret mode without trying to encrypt a missing file', async () => {
+    mocks.platform.native = true;
+    mocks.sqlite.isSecretStored.mockResolvedValue({ result: false });
+    mocks.sqlite.isDatabase.mockResolvedValue({ result: false });
+    storage = new DiarioStorageService();
+
+    await storage.initialize();
+
+    expect(mocks.sqlite.setEncryptionSecret).toHaveBeenCalledOnce();
+    expect(mocks.sqlite.createConnection).toHaveBeenCalledWith('one_diario', true, 'secret', 1, false);
+    expect(storage.getInitializationDiagnostics()).toEqual({
+      databaseExists: false,
+      encryptionKeyAvailable: true,
+      connectionOpen: true,
+      sqliteInitialized: true,
+    });
+  });
+
+  it('recovers an interrupted first launch when the generated key exists but no database file was created', async () => {
+    mocks.platform.native = true;
+    mocks.sqlite.isSecretStored.mockResolvedValue({ result: true });
+    mocks.sqlite.isDatabase.mockResolvedValue({ result: false });
+    storage = new DiarioStorageService();
+
+    await storage.initialize();
+
+    expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+    expect(mocks.sqlite.createConnection).toHaveBeenCalledWith('one_diario', true, 'secret', 1, false);
+    expect(storage.getInitializationDiagnostics().sqliteInitialized).toBe(true);
+  });
+
+  it('refuses to create a replacement database when the encryption key is missing but a database file exists', async () => {
+    mocks.platform.native = true;
+    mocks.sqlite.isSecretStored.mockResolvedValue({ result: false });
+    mocks.sqlite.isDatabase.mockResolvedValue({ result: true });
+    storage = new DiarioStorageService();
+
+    await expect(storage.initialize()).rejects.toThrow('chave segura do diário não está disponível');
+
+    expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+    expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
+    expect(storage.getInitializationDiagnostics()).toEqual({
+      databaseExists: true,
+      encryptionKeyAvailable: false,
+      connectionOpen: false,
+      sqliteInitialized: false,
+    });
+  });
+
+  it.each([{ result: {} }, { result: { result: undefined } }])(
+    'stops on an indeterminate database existence result before generating a key or connection (%s)',
+    async ({ result }) => {
+      mocks.platform.native = true;
+      mocks.sqlite.isSecretStored.mockResolvedValue({ result: false });
+      mocks.sqlite.isDatabase.mockResolvedValue(result as never);
+      storage = new DiarioStorageService();
+
+      await expect(storage.initialize()).rejects.toThrow('Não foi possível confirmar se o banco');
+
+      expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+      expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
+      expect(mocks.sqlite.isConnection).not.toHaveBeenCalled();
+      expect(storage.getInitializationDiagnostics().databaseExists).toBeNull();
+    },
+  );
+
+  it.each([{ result: {} }, { result: { result: undefined } }])(
+    'stops on an indeterminate database result when an Android key already exists (%s)',
+    async ({ result }) => {
+      mocks.platform.native = true;
+      mocks.sqlite.isSecretStored.mockResolvedValue({ result: true });
+      mocks.sqlite.isDatabase.mockResolvedValue(result as never);
+      storage = new DiarioStorageService();
+
+      await expect(storage.initialize()).rejects.toThrow('Não foi possível confirmar se o banco');
+
+      expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+      expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
+      expect(mocks.sqlite.isConnection).not.toHaveBeenCalled();
+      expect(storage.getInitializationDiagnostics().databaseExists).toBeNull();
+    },
+  );
+
+  it.each([{ result: {} }, { result: { result: undefined } }])(
+    'stops Web initialization when database existence is indeterminate (%s)',
+    async ({ result }) => {
+      mocks.sqlite.isDatabase.mockResolvedValue(result as never);
+
+      await expect(storage.initialize()).rejects.toThrow('Não foi possível confirmar se o banco');
+
+      expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
+      expect(mocks.sqlite.saveToStore).not.toHaveBeenCalled();
+      expect(storage.getInitializationDiagnostics().databaseExists).toBeNull();
+    },
+  );
+
+  it('keeps the existing encrypted Android database open mode unchanged', async () => {
+    mocks.platform.native = true;
+    mocks.sqlite.isSecretStored.mockResolvedValue({ result: true });
+    mocks.sqlite.isDatabase.mockResolvedValue({ result: true });
+    storage = new DiarioStorageService();
+
+    await storage.initialize();
+
+    expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+    expect(mocks.sqlite.createConnection).toHaveBeenCalledWith('one_diario', true, 'encryption', 1, false);
+  });
+
+  it.each([{}, { result: undefined }, null])(
+    'stops Android initialization when secret availability is indeterminate (%s)',
+    async (response) => {
+      mocks.platform.native = true;
+      mocks.sqlite.isSecretStored.mockResolvedValue(response as never);
+      storage = new DiarioStorageService();
+
+      await expect(storage.initialize()).rejects.toThrow('Não foi possível confirmar a disponibilidade da chave');
+
+      expect(mocks.sqlite.setEncryptionSecret).not.toHaveBeenCalled();
+      expect(mocks.sqlite.createConnection).not.toHaveBeenCalled();
+      expect(mocks.sqlite.isConnection).not.toHaveBeenCalled();
+      expect(mocks.sqlite.isDatabase).not.toHaveBeenCalled();
+      expect(storage.getInitializationDiagnostics().encryptionKeyAvailable).toBeNull();
+    },
+  );
 
   it('writes the secure PIN record and auth state with only one web database snapshot', async () => {
     await storage.initialize();
