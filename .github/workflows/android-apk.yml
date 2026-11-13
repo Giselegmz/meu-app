@@ -1,12 +1,10 @@
+
 name: Gerar APK Android
 
 on:
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - feature/diario-protegido
   workflow_dispatch:
 
 permissions:
@@ -14,6 +12,7 @@ permissions:
 
 jobs:
   build:
+    name: Compilar APK Debug
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -21,33 +20,41 @@ jobs:
       - name: Baixar projeto
         uses: actions/checkout@v4
 
-      - name: Configurar Node.js
+      - name: Configurar Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: Configurar Java
-        uses: actions/setup-java@v5
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 17
 
-      - name: Instalar dependências
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar componentes Android
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Instalar dependencias
         run: npm ci
 
-      - name: Compilar projeto
+      - name: Compilar Ionic Angular
         run: npm run build
 
-      - name: Sincronizar Android
+      - name: Sincronizar Capacitor
         run: npx cap sync android
 
       - name: Gerar APK
+        working-directory: android
         run: |
-          cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew --no-daemon assembleDebug
 
-      - name: Verificar permissões do APK
+      - name: Verificar APK e permissoes
         run: |
           APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK_PATH"
@@ -61,7 +68,7 @@ jobs:
           cp android/app/build/outputs/apk/debug/app-debug.apk APK/One-Diario.apk
           test -s APK/One-Diario.apk
 
-      - name: Disponibilizar Artifact
+      - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
           name: One-Diario
