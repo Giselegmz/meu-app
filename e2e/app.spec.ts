@@ -9,6 +9,12 @@ async function enterPin(page: import('@playwright/test').Page, pin: string): Pro
 
 test('creates, searches, autosaves, edits, reloads, and deletes a protected diary entry', async ({ page }) => {
   await page.goto('/');
+  const cryptoContext = await page.evaluate(() => ({
+    secure: window.isSecureContext,
+    subtleAvailable: window.crypto?.subtle !== undefined,
+  }));
+  expect(cryptoContext.secure).toBe(true);
+  expect(cryptoContext.subtleAvailable).toBe(true);
   await expect(page.getByRole('heading', { name: 'Crie seu PIN' })).toBeVisible();
 
   for (const digit of '2468') {

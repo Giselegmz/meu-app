@@ -170,4 +170,73 @@ describe('DiarioAuthService', () => {
     expect(mocks.storage.saveSecurityState).toHaveBeenLastCalledWith(0, false);
     expect(auth.authenticated()).toBe(true);
   });
+
+  it('offers PIN setup only when neither secure nor legacy credentials exist', async () => {
+    await auth.initialize();
+
+    expect(auth.requiresSetup()).toBe(true);
+    expect(auth.authenticated()).toBe(false);
+    expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
+  });
+
+  it('creates and validates a PIN before granting access', async () => {
+    await auth.initialize();
+
+    expect(await auth.createPin('4826')).toBeNull();
+
+    expect(mocks.storage.saveSecurityRecord).toHaveBeenCalledOnce();
+    expect(mocks.record?.iterations).toBe(600_000);
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.authenticated()).toBe(true);
+    expect(mocks.storage.setSessionUnlocked).toHaveBeenCalledWith(true);
+  });
+
+  it('keeps PIN setup locked and unsaved when Web Crypto is unavailable', async () => {
+    const cryptoWithoutSubtle = {
+      getRandomValues<T extends ArrayBufferView | null>(array: T): T {
+        if (array instanceof Uint8Array) array.fill(7);
+        return array;
+      },
+    } as Crypto;
+    vi.stubGlobal('crypto', cryptoWithoutSubtle);
+    await auth.initialize();
+
+    const message = await auth.createPin('4826');
+
+    expect(message).toContain('HTTPS');
+    expect(mocks.storage.saveSecurityRecord).not.toHaveBeenCalled();
+    expect(auth.requiresSetup()).toBe(true);
+    expect(auth.authenticated()).toBe(false);
+    expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
+  });
+
+  it('requires authentication when a secure PIN credential already exists', async () => {
+    const salt = btoa('existing-secure-salt');
+    mocks.record = {
+      salt,
+      hash: await pinHash('8642', salt, 600_000),
+      iterations: 600_000,
+      failedAttempts: 0,
+      alarmActive: false,
+    };
+
+    await auth.initialize();
+
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.authenticated()).toBe(false);
+    expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
+    expect(await auth.unlock('8642')).toBeNull();
+    expect(auth.authenticated()).toBe(true);
+  });
+
+  it('refuses setup when only part of a legacy credential exists', async () => {
+    mocks.legacy.set('diario_pin_salt', btoa('legacy-salt'));
+
+    await auth.initialize();
+
+    expect(auth.requiresSetup()).toBe(false);
+    expect(auth.initializationError()).toContain('incompleta');
+    expect(auth.authenticated()).toBe(false);
+    expect(mocks.storage.setSessionUnlocked).not.toHaveBeenCalledWith(true);
+  });
 });

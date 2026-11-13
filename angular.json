@@ -87,6 +87,14 @@
             },
             "ci": {
               "progress": false
+            },
+            "lan-https": {
+              "buildTarget": "app:build:development",
+              "host": "0.0.0.0",
+              "port": 4200,
+              "ssl": true,
+              "sslCert": ".local-dev-certs/lan.pem",
+              "sslKey": ".local-dev-certs/lan-key.pem"
             }
           },
           "defaultConfiguration": "development"

@@ -6,6 +6,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
+    "start:lan:https": "ng serve --configuration lan-https",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "lint": "npm run eslint && npm run typecheck:e2e && npm run prettier -- --check",
@@ -43,6 +44,7 @@
     "cordova-plugin-flashlight": "^3.2.0",
     "ionicons": "^8.1.0",
     "rxjs": "~7.8.0",
+    "sql.js": "1.12.0",
     "tslib": "^2.3.0"
   },
   "devDependencies": {
@@ -63,6 +65,9 @@
     "typescript": "~6.0.0",
     "typescript-eslint": "^8.61.0",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "sql.js": "1.12.0"
   },
   "prettier": "@ionic/prettier-config",
   "description": "An Ionic project"

@@ -41,7 +41,7 @@ export class DiarioAuthService {
       const credential = await this.storage.getSecurityRecord();
       const legacySalt = await Preferences.get({ key: 'diario_pin_salt' });
       const legacyHash = await Preferences.get({ key: 'diario_pin_hash' });
-      const secureState = await this.storage.getSecurityState();
+      const secureState = credential ?? (await this.storage.getSecurityState());
 
       this.failedAttempts.set(secureState.failedAttempts);
       this.alarmActive.set(secureState.alarmActive);
@@ -77,6 +77,7 @@ export class DiarioAuthService {
     if (!this.requiresSetup()) return 'O PIN já está configurado.';
 
     try {
+      this.requireWebCrypto();
       const salt = this.randomBase64(16);
       const record: DiarySecurityRecord = {
         salt,
@@ -152,6 +153,9 @@ export class DiarioAuthService {
       await this.markAuthenticated();
       return null;
     } catch (error) {
+      if (error instanceof Error && error.message.startsWith('A criptografia do navegador')) {
+        return error.message;
+      }
       return error instanceof Error
         ? `${error.message} Tente novamente; o PIN antigo não será removido antes da validação.`
         : 'Falha segura na migração. O diário permanece bloqueado; tente novamente.';
@@ -212,14 +216,15 @@ export class DiarioAuthService {
 
   private async hashPin(pin: string, saltBase64: string, iterations: number): Promise<string> {
     const salt = Uint8Array.from(atob(saltBase64), (char) => char.charCodeAt(0));
-    const material = await crypto.subtle.importKey(
+    const subtle = this.requireWebCrypto().subtle;
+    const material = await subtle.importKey(
       'raw',
       new TextEncoder().encode(pin),
       'PBKDF2',
       false,
       ['deriveBits'],
     );
-    const result = await crypto.subtle.deriveBits(
+    const result = await subtle.deriveBits(
       { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
       material,
       256,
@@ -237,7 +242,18 @@ export class DiarioAuthService {
   }
 
   private randomBase64(size: number): string {
-    return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(size))));
+    const cryptoApi = this.requireWebCrypto();
+    return btoa(String.fromCharCode(...cryptoApi.getRandomValues(new Uint8Array(size))));
+  }
+
+  private requireWebCrypto(): Crypto {
+    const cryptoApi = globalThis.crypto;
+    if (!cryptoApi?.subtle || !cryptoApi.getRandomValues) {
+      throw new Error(
+        'A criptografia do navegador não está disponível. Abra o diário em uma conexão segura HTTPS e tente novamente.',
+      );
+    }
+    return cryptoApi;
   }
 
   private startAlarmLoop(): void {

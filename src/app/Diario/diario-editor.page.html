@@ -7,9 +7,9 @@
     </ion-buttons>
     <ion-title>Minha anotação</ion-title>
     <ion-buttons slot="end">
-      <span class="save-indicator" [class.is-saving]="saving">
+      <span class="save-indicator" [class.is-saving]="saving()">
         <ion-icon name="checkmark-outline"></ion-icon>
-        {{ saving ? 'Salvando' : 'Salvo' }}
+        {{ saving() ? 'Salvando' : 'Salvo' }}
       </span>
     </ion-buttons>
   </ion-toolbar>
@@ -17,36 +17,91 @@
 
 <ion-content class="editor-content">
   <main class="editor-shell">
-    @if (loading) {
-      <p class="editor-state">Abrindo anotação…</p>
-    } @else if (error && !entry) {
-      <p class="editor-state error" role="alert">{{ error }}</p>
-      <ion-button fill="outline" (click)="backToHistory()">Voltar ao histórico</ion-button>
-    } @else if (entry) {
-      <p class="created-at">Criada em {{ dateLabel(entry.createdAt) }}</p>
-      <ion-input
-        class="title-input"
-        label="Título"
-        labelPlacement="stacked"
-        placeholder="Dê um título a este momento"
-        maxlength="100"
-        [value]="title"
-        (ionInput)="title = $any($event).detail.value ?? ''; onTextChanged()">
-      </ion-input>
-      <ion-textarea
-        class="content-input"
-        label="Escreva livremente"
-        labelPlacement="stacked"
-        placeholder="O que você gostaria de registrar hoje?"
-        [value]="content"
-        [autoGrow]="true"
-        rows="12"
-        (ionInput)="content = $any($event).detail.value ?? ''; onTextChanged()">
-      </ion-textarea>
-      <p class="updated-at">Última edição: {{ dateLabel(entry.updatedAt) }}</p>
-      @if (error) {
-        <p class="error" role="alert">{{ error }}</p>
+    @if (loading()) {
+    <p class="editor-state">Abrindo anotação…</p>
+    } @else if (error() && !entry()) {
+    <p class="editor-state error" role="alert">{{ error() }}</p>
+    <ion-button fill="outline" (click)="backToHistory()">Voltar ao histórico</ion-button>
+    } @else if (entry()) {
+    <p class="created-at">Criada em {{ dateLabel(entry()!.createdAt) }}</p>
+    <ion-input
+      class="title-input"
+      label="Título"
+      labelPlacement="stacked"
+      placeholder="Dê um título a este momento"
+      maxlength="100"
+      [value]="title"
+      (ionInput)="title = $any($event).detail.value ?? ''; onTextChanged()"
+    >
+    </ion-input>
+    <ion-textarea
+      class="content-input"
+      label="Escreva livremente"
+      labelPlacement="stacked"
+      placeholder="O que você gostaria de registrar hoje?"
+      [value]="content"
+      [autoGrow]="true"
+      rows="12"
+      (ionInput)="content = $any($event).detail.value ?? ''; onTextChanged()"
+    >
+    </ion-textarea>
+    <section class="photo-section" aria-label="Fotos da anotação">
+      <h2>Fotos</h2>
+      <div class="photo-actions">
+        <ion-button fill="outline" (click)="takePhoto()" [disabled]="photoBusy()">
+          <ion-icon slot="start" name="camera-outline"></ion-icon>
+          Tirar foto
+        </ion-button>
+        <ion-button fill="outline" (click)="choosePhotos()" [disabled]="photoBusy()">
+          <ion-icon slot="start" name="images-outline"></ion-icon>
+          Escolher da galeria
+        </ion-button>
+      </div>
+      @if (pendingPhotos().length) {
+      <h3>Prévia — ainda não salvas</h3>
+      <div class="photo-grid">
+        @for (photo of pendingPhotos(); track $index) {
+        <figure class="photo-card">
+          <img [src]="photo.dataUrl" alt="Prévia da foto selecionada" />
+          <ion-button
+            fill="clear"
+            class="remove-photo"
+            aria-label="Remover foto da prévia"
+            (click)="removePendingPhoto($index)"
+          >
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </figure>
+        }
+      </div>
+      <ion-button class="save-photos" (click)="savePendingPhotos()" [disabled]="photoBusy()">
+        <ion-icon slot="start" name="checkmark-outline"></ion-icon>
+        {{ photoBusy() ? 'Salvando fotos…' : 'Salvar fotos' }}
+      </ion-button>
+      } @if (photos().length) {
+      <h3>Salvas nesta anotação</h3>
+      <div class="photo-grid">
+        @for (photo of photos(); track photo.id) {
+        <figure class="photo-card">
+          <img [src]="photo.dataUrl" alt="Foto da anotação" />
+          <ion-button
+            fill="clear"
+            class="remove-photo"
+            [attr.aria-label]="'Remover foto ' + $index"
+            (click)="removePhoto(photo)"
+          >
+            <ion-icon slot="icon-only" name="close-outline"></ion-icon>
+          </ion-button>
+        </figure>
+        }
+      </div>
+      } @if (photoError()) {
+      <p class="error" role="alert">{{ photoError() }}</p>
       }
-    }
+    </section>
+    <p class="updated-at">Última edição: {{ dateLabel(entry()!.updatedAt) }}</p>
+    @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+    } }
   </main>
 </ion-content>

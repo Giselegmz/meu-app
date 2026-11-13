@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -48,6 +48,7 @@ export class DiarioPage implements OnInit {
     private readonly auth: DiarioAuthService,
     private readonly router: Router,
     private readonly alerts: AlertController,
+    private readonly changeDetector: ChangeDetectorRef,
   ) {
     addIcons({ addOutline, bookOutline, lockClosedOutline, trashOutline });
   }
@@ -88,16 +89,21 @@ export class DiarioPage implements OnInit {
       message: 'Esta anotação será removida do dispositivo.',
       buttons: [
         { text: 'Cancelar', role: 'cancel' },
-        {
-          text: 'Excluir',
-          role: 'destructive',
-          handler: () => {
-            void this.storage.deleteEntry(entry.id).then(() => this.loadEntries());
-          },
-        },
+        { text: 'Excluir', role: 'destructive' },
       ],
     });
     await alert.present();
+    const { role } = await alert.onDidDismiss();
+    if (role !== 'destructive') return;
+
+    try {
+      await this.storage.deleteEntry(entry.id);
+      this.entries = this.entries.filter((existing) => existing.id !== entry.id);
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : 'Não foi possível excluir a anotação.';
+    } finally {
+      this.changeDetector.markForCheck();
+    }
   }
 
   async lock(): Promise<void> {
