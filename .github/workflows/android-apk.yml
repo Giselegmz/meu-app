@@ -33,7 +33,7 @@ jobs:
           java-version: 17
 
       - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Instalar componentes Android
         run: |
@@ -75,3 +75,4 @@ jobs:
           path: APK/One-Diario.apk
           if-no-files-found: error
           retention-days: 14
+
